@@ -1,35 +1,21 @@
 const multer = require('multer');
-const path = require('path');
 
-// Storage Engine
+// ❌ OLD WAY: diskStorage (Vercel-la work aagadhu because read-only)
+/*
 const storage = multer.diskStorage({
-  destination: './uploads/', // Inga dhan files save aagum
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/')
+  },
   filename: function (req, file, cb) {
-    // File name: fieldname-date.extension (e.g. resume-123456789.pdf)
-    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
+    cb(null, Date.now() + '-' + file.originalname)
   }
 });
+*/
 
-// Init Upload
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 5000000 }, // 5MB Limit
-  fileFilter: function (req, file, cb) {
-    checkFileType(file, cb);
-  }
-});
+// ✅ NEW WAY: memoryStorage (Idhu Vercel-la work aagum)
+// File-ai folder-la podama, temporary-ah RAM-la vechukkum.
+const storage = multer.memoryStorage();
 
-// Check File Type (PDFs only recommended)
-function checkFileType(file, cb) {
-  const filetypes = /pdf|doc|docx/;
-  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = filetypes.test(file.mimetype);
-
-  if (mimetype && extname) {
-    return cb(null, true);
-  } else {
-    cb('Error: Resumes (PDF/Doc) Only!');
-  }
-}
+const upload = multer({ storage: storage });
 
 module.exports = upload;
