@@ -1,40 +1,47 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path'); // Path module add pannirukom
-require('dotenv').config();
+const dotenv = require('dotenv');
 
-// Import Routes
-const authRoutes = require('./routes/auth');
-const jobRoutes = require('./routes/jobs');
-const applicationRoutes = require('./routes/applications'); // NEW: Application Route
-
+// Config
+dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(express.json());
-app.use(cors());
-
-// IMPORTANT: Make 'uploads' folder public so we can view resumes
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.json()); // JSON Data-va purinjika
+app.use(cors()); // Frontend & Backend connect aaga
 
 // Database Connection
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('MongoDB Connected Successfully'))
-  .catch((err) => console.log('DB Connection Error:', err));
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("✅ MongoDB Connected Successfully");
+  } catch (err) {
+    console.error("❌ MongoDB Connection Error:", err.message);
+    process.exit(1); // Stop app if DB fails
+  }
+};
 
-// Use Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/jobs', jobRoutes);
-app.use('/api/applications', applicationRoutes); // NEW: Connect Application API
+// Connect DB immediately
+connectDB();
 
-// Basic Test Route
+// Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/jobs', require('./routes/jobs'));
+// app.use('/api/applications', require('./routes/applications')); // Iruntha enable panniko
+
+// Default Route (To check if server is alive)
 app.get('/', (req, res) => {
-  res.send('Job Board Backend is Running!');
+  res.send("API is Running Live! 🚀");
 });
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// 👇 VERCEL SETUP (Rendu vishayam mukkiyam)
+
+// 1. Local-la run panna idhu help pannum
+const PORT = process.env.PORT || 5000;
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`🚀 Server running locally on port ${PORT}`));
+}
+
+// 2. Vercel-ku "App"-a export pannanum
+module.exports = app;
