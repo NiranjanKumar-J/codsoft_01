@@ -1,110 +1,80 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
-const upload = require('../middleware/uploadMiddleware');
+const upload = require('../middleware/uploadMiddleware'); 
 const Application = require('../models/Application');
-const Job = require('../models/Job');
 const nodemailer = require('nodemailer');
 
-// EMAIL CONFIGURATION
+// 🔐 EMAIL CONFIGURATION (Safe Mode)
+// இப்போ பாஸ்வேர்ட் இங்க இருக்காது, Vercel செட்டிங்ஸ்ல இருந்து வரும்.
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: 'jniranjankumar371@gmail.com', // 🔴 Replace with YOUR EMAIL
-    pass: 'nqzcbzmekjpuepei'     // 🔴 Replace with YOUR APP PASSWORD
+    user: process.env.EMAIL_USER, // 👈 ரகசியமா இங்க வரும்
+    pass: process.env.EMAIL_PASS  // 👈 ரகசியமா இங்க வரும்
   }
 });
 
-// @route   GET api/applications/my-applications
-// @desc    Get jobs applied by the logged-in candidate
-// @access  Private (Candidate)
-// ⚠️ IMPORTANT: Place this BEFORE the /:jobId route
-router.get('/my-applications', auth, async (req, res) => {
+// ---------------------------------------------
+// POST: Apply for a Job + Send Email 📨
+// ---------------------------------------------
+router.post('/', auth, upload.single('resume'), async (req, res) => {
   try {
-    const applications = await Application.find({ candidate: req.user.id })
-      .populate('job', ['title', 'company', 'location', 'salary']); 
-    res.json(applications);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
-  }
-});
+    const { jobId, name, email, coverLetter } = req.body;
 
-// @route   POST api/applications/:jobId
-// @desc    Apply for a job
-router.post('/:jobId', [auth, upload.single('resume')], async (req, res) => {
-  try {
-    const { jobId } = req.params;
-    
+    // Vercel Fix: Path இல்லாததால் File Name எடுக்கிறோம்
+    const resumeName = req.file ? req.file.originalname : "resume_upload.pdf";
+
     // Check if already applied
-    const existingApp = await Application.findOne({ job: jobId, candidate: req.user.id });
-    if(existingApp) return res.status(400).json({ msg: 'You have already applied for this job' });
+    const existingApplication = await Application.findOne({ jobId, userId: req.user.id });
+    if (existingApplication) {
+      return res.status(400).json({ msg: 'You have already applied for this job' });
+    }
 
+    // Save to Database
     const newApplication = new Application({
-      job: jobId,
-      candidate: req.user.id,
-      resume: req.file.path
+      jobId,
+      userId: req.user.id,
+      name,
+      email,
+      resume: resumeName,
+      coverLetter
     });
 
     await newApplication.save();
-    res.json({ msg: 'Application Submitted Successfully!' });
+
+    // 📨 EMAIL LOGIC: User-க்கு மெயில் அனுப்புதல்
+    const mailOptions = {
+        from: `JobConnect <${process.env.EMAIL_USER}>`,
+        to: email, 
+        subject: 'Application Received! 🚀',
+        text: `Hello ${name},\n\nYour application has been successfully submitted! We will review it shortly.\n\nBest Regards,\nJobConnect Team`
+    };
+
+    transporter.sendMail(mailOptions, (err, info) => {
+        if (err) console.log('❌ Email Error:', err);
+        else console.log('✅ Email Sent:', info.response);
+    });
+
+    res.json(newApplication);
+
   } catch (err) {
-    console.error(err.message);
+    console.error("App Error:", err.message);
     res.status(500).send('Server Error');
   }
 });
 
-// @route   GET api/applications/:jobId
-// @desc    Get applications for a specific job (Employer Only)
+// ---------------------------------------------
+// GET: View Applications (Employer Only)
+// ---------------------------------------------
 router.get('/:jobId', auth, async (req, res) => {
   try {
-    // Check if the job belongs to the logged-in employer
-    const job = await Job.findById(req.params.jobId);
-    if (job.employer.toString() !== req.user.id) return res.status(401).json({ msg: 'Not authorized' });
-
-    const applications = await Application.find({ job: req.params.jobId })
-      .populate('candidate', ['name', 'email']);
-    
+    const applications = await Application.find({ jobId: req.params.jobId });
     res.json(applications);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
   }
-});
-
-// @route   PUT api/applications/status/:appId
-// @desc    Update Status & Send Email
-router.put('/status/:appId', auth, async (req, res) => {
-    const { status } = req.body;
-    try {
-        const application = await Application.findById(req.params.appId)
-            .populate('candidate', ['name', 'email'])
-            .populate('job', ['title', 'company']);
-
-        if (!application) return res.status(404).json({ msg: 'Application not found' });
-        
-        // Update Status
-        application.status = status;
-        await application.save();
-
-        // 🔥 Email Notification Logic
-        const mailOptions = {
-            from: 'JobConnect Team <noreply@jobconnect.com>',
-            to: application.candidate.email,
-            subject: `Application Update: ${application.job.title}`,
-            text: `Hello ${application.candidate.name},\n\nYour application for the position of "${application.job.title}" at ${application.job.company} has been ${status.toUpperCase()}.\n\nBest Regards,\nJobConnect Team`
-        };
-
-        transporter.sendMail(mailOptions, (err, info) => {
-            if (err) console.log('Email Error:', err);
-            else console.log('Email Sent:', info.response);
-        });
-        
-        res.json(application);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
-    }
 });
 
 module.exports = router;
