@@ -6,7 +6,6 @@ const Application = require('../models/Application');
 const nodemailer = require('nodemailer');
 
 // 🔐 EMAIL CONFIGURATION
-// Vercel Settings-ல் EMAIL_USER மற்றும் EMAIL_PASS இருப்பதை உறுதி செய்யவும்.
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -16,17 +15,33 @@ const transporter = nodemailer.createTransport({
 });
 
 // =============================================
-// 1. APPLY FOR A JOB (POST) 📝
+// 1. GET MY APPLICATIONS (Candidate View) 🙋‍♂️ [NEW ADDITION]
+// =============================================
+// ⚠️ இதுதான் முக்கியம்! இது '/:jobId' க்கு மேலே இருக்க வேண்டும்.
+router.get('/my-applications', auth, async (req, res) => {
+  try {
+    // உள்நுழைந்த User (Candidate) அப்ளை செய்த வேலைகளை தேடுதல்
+    const applications = await Application.find({ candidate: req.user.id })
+      .populate('job', 'title company location salary status'); // Job Details-ஐ இணைத்தல்
+      
+    res.json(applications);
+  } catch (err) {
+    console.error("My Apps Error:", err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// =============================================
+// 2. APPLY FOR A JOB (POST) 📝
 // =============================================
 router.post('/:jobId', auth, upload.single('resume'), async (req, res) => {
   try {
     const { jobId } = req.params; 
     const { name, email, coverLetter } = req.body;
 
-    // Vercel Fix: Path கிடைக்காது, அதனால் File Name-ஐ எடுக்கிறோம்
     const resumeName = req.file ? req.file.originalname : "resume_upload.pdf";
 
-    // 1. Check if already applied (Using 'job' and 'candidate')
+    // Check if already applied
     const existingApplication = await Application.findOne({ 
         job: jobId, 
         candidate: req.user.id 
@@ -36,10 +51,10 @@ router.post('/:jobId', auth, upload.single('resume'), async (req, res) => {
       return res.status(400).json({ msg: 'You have already applied for this job' });
     }
 
-    // 2. Save to Database (Using correct schema names)
+    // Save to Database
     const newApplication = new Application({
-      job: jobId,              // Schema Field: 'job'
-      candidate: req.user.id,  // Schema Field: 'candidate'
+      job: jobId,
+      candidate: req.user.id,
       name,
       email,
       resume: resumeName,
@@ -48,7 +63,7 @@ router.post('/:jobId', auth, upload.single('resume'), async (req, res) => {
 
     await newApplication.save();
 
-    // 3. Send Confirmation Email 📨
+    // Send Email
     const mailOptions = {
         from: `JobConnect <${process.env.EMAIL_USER}>`,
         to: email, 
@@ -58,7 +73,6 @@ router.post('/:jobId', auth, upload.single('resume'), async (req, res) => {
 
     transporter.sendMail(mailOptions, (err, info) => {
         if (err) console.log('❌ Email Error:', err);
-        else console.log('✅ Email Sent:', info.response);
     });
 
     res.json(newApplication);
@@ -70,12 +84,11 @@ router.post('/:jobId', auth, upload.single('resume'), async (req, res) => {
 });
 
 // =============================================
-// 2. GET APPLICATIONS FOR A JOB (Employer View) 👁️
+// 3. GET APPLICATIONS FOR A JOB (Employer View) 👁️
 // =============================================
 router.get('/:jobId', auth, async (req, res) => {
   try {
     const applications = await Application.find({ job: req.params.jobId })
-      // 👇 IMPORTANT FIX: இதுதான் Candidate பெயர் & ஈமெயிலை எடுத்து வரும்!
       .populate('candidate', 'name email'); 
       
     res.json(applications);
@@ -86,19 +99,16 @@ router.get('/:jobId', auth, async (req, res) => {
 });
 
 // =============================================
-// 3. UPDATE STATUS (Accept/Reject) ✅❌
+// 4. UPDATE STATUS (Accept/Reject) ✅❌
 // =============================================
 router.put('/status/:appId', auth, async (req, res) => {
     const { status } = req.body;
     try {
         const application = await Application.findById(req.params.appId);
-        
         if (!application) return res.status(404).json({ msg: 'Application not found' });
         
-        // Update Status
         application.status = status;
         await application.save();
-
         res.json(application);
     } catch (err) {
         console.error(err.message);
