@@ -14,7 +14,7 @@ function EmployerDashboard() {
   const fetchMyJobs = async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await axios.get('http://localhost:5000/api/jobs/myjobs', {
+      const res = await axios.get('/api/jobs/myjobs', {
         headers: { 'x-auth-token': token }
       });
       setMyJobs(res.data);
@@ -29,7 +29,7 @@ function EmployerDashboard() {
     }
     const token = localStorage.getItem('token');
     try {
-      await axios.delete(`http://localhost:5000/api/jobs/${jobId}`, {
+      await axios.delete(`/api/jobs/${jobId}`, {
         headers: { 'x-auth-token': token }
       });
       alert('Job Deleted Successfully');
@@ -43,7 +43,7 @@ function EmployerDashboard() {
   const viewApplications = async (jobId) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await axios.get(`http://localhost:5000/api/applications/${jobId}`, {
+      const res = await axios.get(`/api/applications/${jobId}`, {
         headers: { 'x-auth-token': token }
       });
       setSelectedJobApps(res.data);
@@ -57,7 +57,7 @@ function EmployerDashboard() {
   const updateStatus = async (appId, newStatus) => {
     const token = localStorage.getItem('token');
     try {
-        await axios.put(`http://localhost:5000/api/applications/status/${appId}`, 
+        await axios.put(`/api/applications/status/${appId}`, 
             { status: newStatus },
             { headers: { 'x-auth-token': token } }
         );

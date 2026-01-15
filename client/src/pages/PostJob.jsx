@@ -14,7 +14,7 @@ function PostJob() {
     e.preventDefault();
     const token = localStorage.getItem('token');
     try {
-      await axios.post('http://localhost:5000/api/jobs', jobData, {
+      await axios.post('/api/jobs', jobData, {
         headers: { 'x-auth-token': token } 
       });
       alert('Job Posted Successfully!');

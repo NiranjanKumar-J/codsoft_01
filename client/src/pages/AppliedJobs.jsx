@@ -10,7 +10,7 @@ function AppliedJobs() {
     const fetchMyApps = async () => {
       const token = localStorage.getItem('token');
       try {
-        const res = await axios.get('http://localhost:5000/api/applications/my-applications', {
+        const res = await axios.get('/api/applications/my-applications', {
           headers: { 'x-auth-token': token }
         });
         setApplications(res.data);

@@ -9,7 +9,7 @@ function CandidateDashboard() {
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/jobs');
+        const res = await axios.get('/api/jobs');
         setJobs(res.data);
       } catch (err) {
         console.log("Error fetching jobs:", err);
@@ -32,7 +32,7 @@ function CandidateDashboard() {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`http://localhost:5000/api/applications/${jobId}`, formData, {
+      await axios.post(`/api/applications/${jobId}`, formData, {
         headers: {
           'x-auth-token': token,
           'Content-Type': 'multipart/form-data'

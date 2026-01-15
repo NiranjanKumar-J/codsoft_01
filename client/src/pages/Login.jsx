@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 
-// இந்த ஸ்டைல் ஃபைல் தேவைப்பட்டால் மட்டும் வச்சுக்கோங்க
-// import '../App.css'; 
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -16,13 +14,11 @@ const Login = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      // Backend Port 5000-னு வச்சிருக்கேன். உங்க போர்ட் வேறனா மாத்திக்கோங்க.
-      const res = await axios.post('http://localhost:5000/api/auth/login', formData);
+      const res = await axios.post('/api/auth/login', formData);
       
-      // Token & User Details சேவ் பண்றோம்
+      
       localStorage.setItem('token', res.data.token);
       
-      // Backend-ல இருந்து வர்ற டேட்டா பொறுத்து இதை அட்ஜஸ்ட் பண்ணிக்கோங்க
       const userRole = res.data.user ? res.data.user.role : res.data.role;
       const userName = res.data.user ? res.data.user.name : res.data.name;
       const userEmail = res.data.user ? res.data.user.email : res.data.email;
@@ -33,14 +29,13 @@ const Login = () => {
 
       alert('Login Successful! 🚀');
 
-      // ரோல் பொறுத்து ரீடைரக்ட் பண்றோம்
       if (userRole === 'employer') {
         navigate('/employer-dashboard'); // Employer -> Dashboard
       } else {
         navigate('/'); // Candidate -> Home Page
       }
       
-      // Navbar அப்டேட் ஆக ஒரு ரீலோட் (Optional)
+      
       window.location.reload(); 
 
     } catch (err) {
@@ -101,7 +96,6 @@ const containerStyle = {
   background: '#1a1a1a', // Page Background
 };
 
-// 👇 இதுதான் Register Page-ல இருந்து எடுத்த அதே பாக்ஸ் ஸ்டைல்
 const formBoxStyle = {
   background: '#2a2a2a', // 📦 The Box Color (Dark Grey)
   padding: '40px',
