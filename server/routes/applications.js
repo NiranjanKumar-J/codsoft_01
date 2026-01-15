@@ -5,22 +5,26 @@ const upload = require('../middleware/uploadMiddleware');
 const Application = require('../models/Application');
 const nodemailer = require('nodemailer');
 
-// 🔐 EMAIL CONFIGURATION (Safe Mode)
-// இப்போ பாஸ்வேர்ட் இங்க இருக்காது, Vercel செட்டிங்ஸ்ல இருந்து வரும்.
+// 🔐 EMAIL CONFIGURATION
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER, // 👈 ரகசியமா இங்க வரும்
-    pass: process.env.EMAIL_PASS  // 👈 ரகசியமா இங்க வரும்
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
   }
 });
 
 // ---------------------------------------------
 // POST: Apply for a Job + Send Email 📨
 // ---------------------------------------------
-router.post('/', auth, upload.single('resume'), async (req, res) => {
+// 👇 மாற்றம் இங்கே தான்: '/:jobId' என்று இருக்க வேண்டும்!
+router.post('/:jobId', auth, upload.single('resume'), async (req, res) => {
   try {
-    const { jobId, name, email, coverLetter } = req.body;
+    // 1. Get Job ID from URL (Frontend அனுப்புவது போல)
+    const { jobId } = req.params; 
+    
+    // 2. Get other data from Body
+    const { name, email, coverLetter } = req.body;
 
     // Vercel Fix: Path இல்லாததால் File Name எடுக்கிறோம்
     const resumeName = req.file ? req.file.originalname : "resume_upload.pdf";
@@ -33,7 +37,7 @@ router.post('/', auth, upload.single('resume'), async (req, res) => {
 
     // Save to Database
     const newApplication = new Application({
-      jobId,
+      jobId, // URL-லிருந்து வந்த ID
       userId: req.user.id,
       name,
       email,
@@ -43,7 +47,7 @@ router.post('/', auth, upload.single('resume'), async (req, res) => {
 
     await newApplication.save();
 
-    // 📨 EMAIL LOGIC: User-க்கு மெயில் அனுப்புதல்
+    // 📨 EMAIL LOGIC
     const mailOptions = {
         from: `JobConnect <${process.env.EMAIL_USER}>`,
         to: email, 
