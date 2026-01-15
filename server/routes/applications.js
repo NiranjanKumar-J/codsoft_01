@@ -17,28 +17,24 @@ const transporter = nodemailer.createTransport({
 // ---------------------------------------------
 // POST: Apply for a Job + Send Email 📨
 // ---------------------------------------------
-// 👇 மாற்றம் இங்கே தான்: '/:jobId' என்று இருக்க வேண்டும்!
 router.post('/:jobId', auth, upload.single('resume'), async (req, res) => {
   try {
-    // 1. Get Job ID from URL (Frontend அனுப்புவது போல)
     const { jobId } = req.params; 
-    
-    // 2. Get other data from Body
     const { name, email, coverLetter } = req.body;
 
-    // Vercel Fix: Path இல்லாததால் File Name எடுக்கிறோம்
     const resumeName = req.file ? req.file.originalname : "resume_upload.pdf";
 
+    // 👇 மாற்றம் 1: 'jobId' & 'userId' க்கு பதில் 'job' & 'candidate'
     // Check if already applied
-    const existingApplication = await Application.findOne({ jobId, userId: req.user.id });
+    const existingApplication = await Application.findOne({ job: jobId, candidate: req.user.id });
     if (existingApplication) {
       return res.status(400).json({ msg: 'You have already applied for this job' });
     }
 
-    // Save to Database
+    // 👇 மாற்றம் 2: Database-ல் சேவ் செய்யும் போது சரியான பெயர்கள்
     const newApplication = new Application({
-      jobId, // URL-லிருந்து வந்த ID
-      userId: req.user.id,
+      job: jobId,              // Database Field: 'job'
+      candidate: req.user.id,  // Database Field: 'candidate'
       name,
       email,
       resume: resumeName,
@@ -64,7 +60,7 @@ router.post('/:jobId', auth, upload.single('resume'), async (req, res) => {
 
   } catch (err) {
     console.error("App Error:", err.message);
-    res.status(500).send('Server Error');
+    res.status(500).send('App Error: ' + err.message);
   }
 });
 
@@ -73,7 +69,8 @@ router.post('/:jobId', auth, upload.single('resume'), async (req, res) => {
 // ---------------------------------------------
 router.get('/:jobId', auth, async (req, res) => {
   try {
-    const applications = await Application.find({ jobId: req.params.jobId });
+    // இங்கயும் query பண்ணும்போது 'job' னு மாத்தணும்
+    const applications = await Application.find({ job: req.params.jobId });
     res.json(applications);
   } catch (err) {
     console.error(err.message);
